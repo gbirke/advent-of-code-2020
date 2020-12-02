@@ -20,14 +20,6 @@ fn part1(numbers: &[i64]) -> i64 {
         .find(|(_counterpart, number)| numbers_and_rests.contains_key(number))
         .unwrap();
 
-    println!(
-        "Part 1: found {} and {}, product is {}",
-        solution.0,
-        solution.1,
-        solution.0 * *solution.1
-    );
-
-
     solution.0 * *solution.1
 }
 
@@ -49,13 +41,6 @@ fn part2(numbers: &[i64]) -> i64 {
     let solution = two_number_combinations
         .find(|(rest, _n1, _n2)| num_lookup.contains_key(rest))
         .unwrap();
-    println!(
-        "Part 2: found {}, {} and {}, product is {}",
-        solution.0,
-        solution.1,
-        solution.2,
-        solution.0 * solution.1 * solution.2
-    );
 
     solution.0 * solution.1 * solution.2
 }
