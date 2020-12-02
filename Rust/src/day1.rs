@@ -44,4 +44,3 @@ fn part2(numbers: &[i64]) -> i64 {
 
     solution.0 * solution.1 * solution.2
 }
-
