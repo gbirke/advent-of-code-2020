@@ -1,5 +1,6 @@
 use std::collections::HashMap;
-use std::iter;
+use std::collections::HashSet;
+use std::iter::FromIterator;
 
 #[aoc_generator(day1)]
 pub fn read_input_numbers(input: &str) -> Vec<i64> {
@@ -37,9 +38,9 @@ fn part2(numbers: &[i64]) -> i64 {
             .filter(|p| p.0 >= *lowest_number)
     });
     // A lookup table for the missing 3rd number
-    let num_lookup: HashMap<_, _> = numbers.iter().zip(iter::repeat(1)).collect();
+    let num_lookup: HashSet<&i64> = HashSet::from_iter(numbers);
     let solution = two_number_combinations
-        .find(|(rest, _n1, _n2)| num_lookup.contains_key(rest))
+        .find(|(rest, _n1, _n2)| num_lookup.contains(rest))
         .unwrap();
 
     solution.0 * solution.1 * solution.2
