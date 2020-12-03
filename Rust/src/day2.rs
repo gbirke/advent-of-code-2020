@@ -124,7 +124,6 @@ mod test {
 
     #[test]
     fn it_checks_password_validity_for_new_policy() {
-
         let should_be_valid = PasswordAndPolicy {
             c: 'a',
             lower_bound: 1,
