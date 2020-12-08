@@ -23,6 +23,14 @@ pub fn parse_input(input: &str) -> Vec<Instruction> {
         .collect()
 }
 
+#[derive(Eq, PartialEq, Debug)]
+enum RuntimeError {
+    IllegalJump(usize),
+    LoopDetected(usize, usize, i32),
+}
+
+type RuntimeResult = Result<i32, RuntimeError>;
+
 struct VirtualMachine {
     instruction_counter: usize,
     accumulator: i32,
@@ -36,13 +44,19 @@ impl VirtualMachine {
         }
     }
 
-    fn run_with_loop_detection(&mut self, instructions: &Vec<Instruction>) -> i32 {
+    fn run_with_loop_detection(&mut self, instructions: &Vec<Instruction>) -> RuntimeResult {
         let mut executed_instructions: HashSet<usize> = HashSet::new();
+        let mut previous_instruction: usize = 0;
         loop {
             if executed_instructions.contains(&self.instruction_counter) {
-                return self.accumulator;
+                return Err(RuntimeError::LoopDetected(
+                    previous_instruction,
+                    self.instruction_counter,
+                    self.accumulator,
+                ));
             }
-            executed_instructions.insert(self.instruction_counter.clone());
+            previous_instruction = self.instruction_counter.clone();
+            executed_instructions.insert(previous_instruction);
             match instructions[self.instruction_counter] {
                 Instruction::Noop => self.instruction_counter += 1,
                 Instruction::Acc(acc) => {
@@ -52,11 +66,14 @@ impl VirtualMachine {
                 Instruction::Jump(count) => {
                     let mut current: i32 = self.instruction_counter as i32;
                     if current + count < 0 {
-                        panic!("Illegal Jump!")
+                        return Err(RuntimeError::IllegalJump(self.instruction_counter));
                     }
                     current += count;
                     self.instruction_counter = current as usize;
                 }
+            }
+            if self.instruction_counter > instructions.len() {
+                return Ok(self.accumulator);
             }
         }
     }
@@ -65,7 +82,10 @@ impl VirtualMachine {
 #[aoc(day8, part1)]
 pub fn part_one(instructions: &Vec<Instruction>) -> i32 {
     let mut vm = VirtualMachine::new();
-    vm.run_with_loop_detection(&instructions)
+    match vm.run_with_loop_detection(&instructions) {
+        Err(RuntimeError::LoopDetected(_, _, acc)) => acc,
+        result => panic!("Unexpected runtime result: {:?}", result),
+    }
 }
 
 #[cfg(test)]
