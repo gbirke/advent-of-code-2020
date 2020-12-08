@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug, Clone)]
 pub enum Instruction {
-    Noop,
+    Noop(i32),
     Acc(i32),
     Jump(i32),
 }
@@ -13,10 +13,12 @@ pub fn parse_input(input: &str) -> Vec<Instruction> {
         .lines()
         .map(|line| {
             let mut parts = line.split(" ");
-            match parts.next() {
-                Some("nop") => Instruction::Noop,
-                Some("acc") => Instruction::Acc(parts.next().unwrap().parse::<i32>().unwrap()),
-                Some("jmp") => Instruction::Jump(parts.next().unwrap().parse::<i32>().unwrap()),
+            let instruction = parts.next();
+            let instruction_param = parts.next().unwrap().parse::<i32>().unwrap();
+            match instruction {
+                Some("nop") => Instruction::Noop(instruction_param),
+                Some("jmp") => Instruction::Jump(instruction_param),
+                Some("acc") => Instruction::Acc(instruction_param),
                 _ => panic!("Unknown instruction"),
             }
         })
@@ -27,6 +29,7 @@ pub fn parse_input(input: &str) -> Vec<Instruction> {
 enum RuntimeError {
     IllegalJump(usize),
     LoopDetected(usize, usize, i32),
+    NoValidInstructionVariant,
 }
 
 type RuntimeResult = Result<i32, RuntimeError>;
@@ -47,6 +50,8 @@ impl VirtualMachine {
     fn run_with_loop_detection(&mut self, instructions: &Vec<Instruction>) -> RuntimeResult {
         let mut executed_instructions: HashSet<usize> = HashSet::new();
         let mut previous_instruction: usize = 0;
+        self.instruction_counter = 0;
+        self.accumulator = 0;
         loop {
             if executed_instructions.contains(&self.instruction_counter) {
                 return Err(RuntimeError::LoopDetected(
@@ -58,7 +63,7 @@ impl VirtualMachine {
             previous_instruction = self.instruction_counter.clone();
             executed_instructions.insert(previous_instruction);
             match instructions[self.instruction_counter] {
-                Instruction::Noop => self.instruction_counter += 1,
+                Instruction::Noop(_) => self.instruction_counter += 1,
                 Instruction::Acc(acc) => {
                     self.accumulator += acc;
                     self.instruction_counter += 1;
@@ -72,10 +77,40 @@ impl VirtualMachine {
                     self.instruction_counter = current as usize;
                 }
             }
-            if self.instruction_counter > instructions.len() {
+            if self.instruction_counter >= instructions.len() {
                 return Ok(self.accumulator);
             }
         }
+    }
+
+    fn run_with_iterative_jump_replacement(
+        &mut self,
+        instructions: &Vec<Instruction>,
+    ) -> RuntimeResult {
+        for (i, instruction) in instructions.iter().enumerate() {
+            match instruction {
+                Instruction::Jump(param) => {
+                    let mut new_instructions = instructions.clone();
+                    let _ = std::mem::replace(&mut new_instructions[i], Instruction::Noop(*param));
+                    let result = self.run_with_loop_detection(&new_instructions);
+                    if result.is_ok() {
+                        return result;
+                    }
+                    ()
+                }
+                Instruction::Noop(param) => {
+                    let mut new_instructions = instructions.clone();
+                    let _ = std::mem::replace(&mut new_instructions[i], Instruction::Jump(*param));
+                    let result = self.run_with_loop_detection(&new_instructions);
+                    if result.is_ok() {
+                        return result;
+                    }
+                    ()
+                }
+                _ => (),
+            }
+        }
+        Err(RuntimeError::NoValidInstructionVariant)
     }
 }
 
@@ -83,7 +118,24 @@ impl VirtualMachine {
 pub fn part_one(instructions: &Vec<Instruction>) -> i32 {
     let mut vm = VirtualMachine::new();
     match vm.run_with_loop_detection(&instructions) {
-        Err(RuntimeError::LoopDetected(_, _, acc)) => acc,
+        Err(RuntimeError::LoopDetected(prev_ic, current, acc)) => {
+            println!(
+                "Loop detected at instruction {}, jumping to {}",
+                prev_ic, current
+            );
+            acc
+        }
+        result => panic!("Unexpected runtime result: {:?}", result),
+    }
+}
+
+#[aoc(day8, part2)]
+pub fn part_two(instructions: &Vec<Instruction>) -> i32 {
+    let mut new_instructions = instructions.clone();
+    let _ = std::mem::replace(&mut new_instructions[176], Instruction::Noop(0));
+    let mut vm = VirtualMachine::new();
+    match vm.run_with_iterative_jump_replacement(&new_instructions) {
+        Ok(result) => result,
         result => panic!("Unexpected runtime result: {:?}", result),
     }
 }
@@ -96,7 +148,7 @@ mod test {
     fn it_parses_instructions() {
         let input = "nop +0\nacc +1\njmp +4\nacc +3\njmp -3\nacc -99\nacc +1\njmp -4\nacc +6";
         let expected = vec![
-            Instruction::Noop,
+            Instruction::Noop(0),
             Instruction::Acc(1),
             Instruction::Jump(4),
             Instruction::Acc(3),
@@ -110,10 +162,11 @@ mod test {
         assert_eq!(parse_input(input), expected);
     }
 
+    #[test]
     fn it_runs_until_loop_detected() {
         let mut vm = VirtualMachine::new();
         let instructions = vec![
-            Instruction::Noop,
+            Instruction::Noop(0),
             Instruction::Acc(1),
             Instruction::Jump(4),
             Instruction::Acc(3),
@@ -124,6 +177,30 @@ mod test {
             Instruction::Acc(6),
         ];
 
-        assert_eq!(&vm.run_with_loop_detection(&instructions), &5)
+        match vm.run_with_loop_detection(&instructions) {
+            Err(err) => assert_eq!(err, RuntimeError::LoopDetected(4, 1, 5)),
+            Ok(r) => panic!("Unexpected result: {}", r),
+        }
+    }
+
+    #[test]
+    fn it_replaces_jumps() {
+        let mut vm = VirtualMachine::new();
+        let instructions = vec![
+            Instruction::Noop(0),
+            Instruction::Acc(1),
+            Instruction::Jump(4),
+            Instruction::Acc(3),
+            Instruction::Jump(-3),
+            Instruction::Acc(-99),
+            Instruction::Acc(1),
+            Instruction::Jump(-4),
+            Instruction::Acc(6),
+        ];
+
+        match vm.run_with_iterative_jump_replacement(&instructions) {
+            Ok(r) => assert_eq!(r, 8),
+            err => panic!("Unexpected error: {:?}", err),
+        }
     }
 }
