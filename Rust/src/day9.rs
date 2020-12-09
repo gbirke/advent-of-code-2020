@@ -34,6 +34,43 @@ pub fn part_one(numbers: &[i64]) -> Option<i64> {
     detect_invalid_in_range(numbers, 25)
 }
 
+fn find_numbers_in_range(
+    numbers: &[i64],
+    search_number: i64,
+    initial_window_size: usize,
+) -> Option<Vec<&i64>> {
+    let mut window_size = initial_window_size;
+    while window_size > 1 {
+        let mut i = numbers.len();
+        let optimization_threshold = search_number / window_size as i64;
+        while i > window_size {
+            let sum: i64 = numbers[i - window_size..i].iter().sum();
+            if sum == search_number {
+                return Some(numbers[i - window_size..i].iter().collect());
+            }
+            // possible optimization because our numbers are ascending - stop searching early
+            if sum < optimization_threshold {
+                break;
+            }
+            i -= 1;
+        }
+        window_size -= 1;
+    }
+    None
+}
+
+#[aoc(day9, part2)]
+pub fn part_two(numbers: &[i64]) -> Option<i64> {
+    let invalid_number = detect_invalid_in_range(numbers, 25).unwrap();
+    let start_position = numbers.iter().position(|n| n == &invalid_number).unwrap();
+    match find_numbers_in_range(&numbers[..start_position], invalid_number, 25) {
+        Some(found_range) => {
+            Some(*found_range.iter().max().unwrap() + *found_range.iter().min().unwrap())
+        }
+        None => None,
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -54,5 +91,16 @@ mod test {
         ];
 
         assert_eq!(detect_invalid_in_range(&input_numbers, 5), Some(127));
+    }
+
+    #[test]
+    fn it_finds_sum_in_number_range() {
+        let input_numbers: Vec<i64> =
+            vec![35, 20, 15, 25, 47, 40, 62, 55, 65, 95, 102, 117, 150, 182];
+
+        assert_eq!(
+            find_numbers_in_range(&input_numbers, 127, 8),
+            Some(vec![&15, &25, &47, &40])
+        );
     }
 }
