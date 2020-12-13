@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/Day12/Ship.php';
+require_once __DIR__ . '/Day12/WaypointShip.php';
 
 class Day12 {
 	private array $input;
@@ -22,7 +23,14 @@ class Day12 {
 		$ship = new Ship();
 		foreach( $directions as [$dir, $unit] ) {
 			$ship->go($dir, $unit);
-			var_dump($ship);
+		}
+		return $ship->getDistance();
+	}
+
+	public function steerWaypointShip(array $directions): int {
+		$ship = new WaypointShip();
+		foreach( $directions as [$dir, $unit] ) {
+			$ship->go($dir, $unit);
 		}
 		return $ship->getDistance();
 	}

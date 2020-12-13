@@ -13,4 +13,5 @@ R90
 F11
 TEST;
 $directions = $program->parseInput(trim($input));
-printf("Distance: %d\n", $program->steerShip($directions));
+printf("Part 1 Distance: %d\n", $program->steerShip($directions));
+printf("Part 2 Distance: %d\n", $program->steerWaypointShip($directions));
