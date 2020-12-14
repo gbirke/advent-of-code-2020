@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::convert::TryFrom;
 
 #[derive(Eq, PartialEq, Debug, Clone)]
 struct Bitmask {
@@ -52,6 +53,22 @@ fn part_one(input: &Vec<Memory>) -> u64 {
     let unique_memory: HashMap<u64, Memory> =
         input.iter().map(|m| (m.location, m.clone())).collect();
     unique_memory.values().map(|m| m.apply_bitmask()).sum()
+}
+
+fn get_floating_masks(input: &str) -> Vec<usize> {
+    let floating_bits: Vec<usize> = input.chars().rev().enumerate().filter_map(|(i,c) | match c {
+        'X' => Some(i), _ => None
+    }).collect();
+    
+    let powers:Vec<u64> = floating_bits.iter().map(|n| {
+        2u64.pow(u32::try_from(*n).unwrap())
+    }).collect();
+
+    // TODO combine each power with [1, 0] using https://docs.rs/itertools/0.7.8/itertools/trait.Itertools.html#method.combinations
+    // TODO Create numbers from all the combinations, setting the bits
+
+    // TODO replace with real vec
+    Vec::new()
 }
 
 #[cfg(test)]
